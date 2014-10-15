@@ -661,8 +661,48 @@ PRIVATE void HTMIME_put_character ARGS2(HTStream *, me, char, c)
 #endif
 		break;
             case LOCATION:
-		me->location = me->value;
-		redirecting_url = strdup (me->location);
+		// NOTE: If it's not an absolute path starting with / we assume
+		//       it's a full URI. AFAIK, this should always be correct.
+		if (me->value[0] == '/') {
+			unsigned int colon  = 0,
+			             offset = 0,
+			             i      = 0;
+
+			// Maximum length is address + redirect path + NULL byte.
+			redirecting_url = malloc(strlen(me->anchor->address) + strlen(me->value) + 1);
+			strcpy(redirecting_url, me->anchor->address);
+
+			for (i = 0; i < strlen(redirecting_url); i++) {
+				if (redirecting_url[i] == ':') {
+					colon = i;
+					break;
+				}
+			}
+
+			if (colon > 0 && redirecting_url[colon + 1] == '/' &&
+			    redirecting_url[colon + 2] == '/') {
+				offset = colon + 3;
+			}
+
+
+			for (i = offset; i < strlen(redirecting_url); i++) {
+				if (redirecting_url[i] == '/') {
+					offset = i;
+					break;
+				}
+			}
+
+			strcpy(redirecting_url + offset, me->value);
+
+			realloc(redirecting_url, strlen(redirecting_url) + 1);
+
+			me->location = strdup(redirecting_url);
+		} else {
+			me->location = me->value;
+			redirecting_url = strdup(me->location);
+		}
+
+
 #ifndef DISABLE_TRACE
 		if (www2Trace)
 			fprintf(stderr,
