@@ -118,6 +118,7 @@ unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
     png_info *info_ptr;
 
     double screen_gamma;
+    double *file_gamma;
 
     png_byte *png_pixels = NULL,
              **row_pointers = NULL;
@@ -281,9 +282,6 @@ unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
     if (bit_depth < 8)
         png_set_packing(png_ptr);
 
-/* idk fuck it */
-#ifdef LOLFUCKYOU
-
     /* have libpng handle the gamma conversion */
 
     if (get_pref_boolean(eUSE_SCREEN_GAMMA)) { /*SWP*/
@@ -295,13 +293,13 @@ unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
                 fprintf(stderr,"screen gamma=%f\n",screen_gamma);
             }
 #endif
-            if (info_ptr->valid & PNG_INFO_gAMA) {
+            if (png_get_gAMA(png_ptr, info_ptr, file_gamma) == 0) {
 #ifndef DISABLE_TRACE
                 if (srcTrace) {
-                    printf("setting gamma=%f\n",info_ptr->gamma);
+                    printf("setting gamma=%f\n", *file_gamma);
                 }
 #endif
-                png_set_gamma(png_ptr, screen_gamma, (double)info_ptr->gamma);
+                png_set_gamma(png_ptr, screen_gamma, (double)screen_gamma);
             }
             else {
 #ifndef DISABLE_TRACE
@@ -313,8 +311,6 @@ unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
             }
         }
     }
-
-#endif /* LOLFUCKYOU */
 
     if (png_get_interlace_type(png_ptr, info_ptr))
         png_set_interlace_handling(png_ptr);
