@@ -137,9 +137,9 @@ static_xlibs = /usr/X11R6/lib/libXpm.a /usr/X11R6/lib/libXm.a /usr/X11R6/lib/lib
 
 pngdir = /usr
 pnglibdir = $(pngdir)/lib
-pngincludedir = $(pngdir)/include/libpng12
-pnglibs = -lpng12 -lz -lm
-pngflags =  -I$(pngincludedir) -DHAVE_PNG -lpng12 -lz -lm
+pngincludedir = $(pngdir)/include/libpng16
+pnglibs = -lpng16 -lz -lm
+pngflags =  -I$(pngincludedir) -DHAVE_PNG -lpng16 -lz -lm
 
 #### JPEG SUPPORT
 #### For inline JPEG support, the following should be defined:

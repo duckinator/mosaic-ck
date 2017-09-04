@@ -85,6 +85,28 @@
 extern int srcTrace;
 #endif
 
+void __trace(char *string, png_struct *png_ptr, png_info *info_ptr)
+{
+#ifndef DISABLE_TRACE
+    if (srcTrace) {
+        fprintf(stderr, "\n\n[start %s]\n", string);
+        fprintf(stderr, "height = %d\n", png_get_image_width(png_ptr, info_ptr));
+        fprintf(stderr, "width = %d\n", png_get_image_height(png_ptr, info_ptr));
+        fprintf(stderr, "bit depth = %d\n", png_get_bit_depth(png_ptr, info_ptr));
+        fprintf(stderr, "color type = %d\n", png_get_color_type(png_ptr, info_ptr));
+        fprintf(stderr, "compression type = %d\n", png_get_compression_type(png_ptr, info_ptr));
+        fprintf(stderr, "filter type = %d\n", png_get_filter_type(png_ptr, info_ptr));
+        fprintf(stderr, "interlace type = %d\n", png_get_interlace_type(png_ptr, info_ptr));
+        //fprintf(stderr, "num colors = %d\n", info_ptr->num_palette);
+        fprintf(stderr, "num colors = ????\n");
+        fprintf(stderr, "rowbytes = %d\n", png_get_rowbytes(png_ptr, info_ptr));
+        fprintf(stderr, "[end   %s]\n\n", string);
+    }
+#endif
+}
+
+
+
 unsigned char *
 ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 {
@@ -102,6 +124,9 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
     int i, j;
 
     unsigned int packets;
+
+    unsigned int color_type;
+    unsigned int bit_depth;
 
     png_color std_color_cube[216];
 
@@ -132,59 +157,47 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
     if(!png_ptr)
         return 0;
 
-    info_ptr = (png_info *)malloc(sizeof(png_info));
+    info_ptr = png_create_info_struct(png_ptr);
     if(!info_ptr) {
         png_destroy_read_struct(&png_ptr, NULL, NULL);
         return 0;
     }
 
         /* Establish the setjmp return context for png_error to use. */
-    if (setjmp(png_ptr->jmpbuf)) {
-        
+    if (setjmp(png_jmpbuf(png_ptr))) {
 #ifndef DISABLE_TRACE
         if (srcTrace) {
             fprintf(stderr, "\n!!!libpng read error!!!\n");
         }
 #endif
 
-	png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+        png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 
         if(png_pixels != NULL)
             free((char *)png_pixels);
         if(row_pointers != NULL)
             free((png_byte **)row_pointers);
-	png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-        
+
+        png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+
         return 0;
     }
 
-        /* initialize the structure */
-    png_info_init(info_ptr);
-    
         /* set up the input control */
     png_init_io(png_ptr, infile);
-    
+
         /* read the file information */
     png_read_info(png_ptr, info_ptr);
-    
-        /* setup other stuff using the fields of png_info. */
-    
-    *width = (int)png_ptr->width;
-    *height = (int)png_ptr->height;
 
-#ifndef DISABLE_TRACE
-    if (srcTrace) {
-        fprintf(stderr,"\n\nBEFORE\nheight = %d\n", (int)png_ptr->width);
-        fprintf(stderr,"width = %d\n", (int)png_ptr->height);
-        fprintf(stderr,"bit depth = %d\n", info_ptr->bit_depth);
-        fprintf(stderr,"color type = %d\n", info_ptr->color_type);
-        fprintf(stderr,"compression type = %d\n", info_ptr->compression_type);
-        fprintf(stderr,"filter type = %d\n", info_ptr->filter_type);
-        fprintf(stderr,"interlace type = %d\n", info_ptr->interlace_type);
-        fprintf(stderr,"num colors = %d\n",info_ptr->num_palette);
-        fprintf(stderr,"rowbytes = %d\n", info_ptr->rowbytes);
-    }
-#endif
+        /* setup other stuff using the fields of png_info. */
+
+    *width = (int)png_get_image_width(png_ptr, info_ptr);
+    *height = (int)png_get_image_height(png_ptr, info_ptr);
+
+    color_type = png_get_color_type(png_ptr, info_ptr);
+    bit_depth = png_get_bit_depth(png_ptr, info_ptr);
+
+    __trace("BEGIN", png_ptr, info_ptr);
 
 
 #if 0
@@ -205,16 +218,24 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 #endif
 
         /* strip pixels in 16-bit images down to 8 bits */
-    if (info_ptr->bit_depth == 16)
+    if (png_get_bit_depth(png_ptr, info_ptr) == 16)
         png_set_strip_16(png_ptr);
+
 
 
         /* If it is a color image then check if it has a palette. If not
            then dither the image to 256 colors, and make up a palette */
-    if (info_ptr->color_type==PNG_COLOR_TYPE_RGB ||
-        info_ptr->color_type==PNG_COLOR_TYPE_RGB_ALPHA) {
+    if (color_type == PNG_COLOR_TYPE_RGB ||
+        color_type == PNG_COLOR_TYPE_RGB_ALPHA) {
 
-        if(! (info_ptr->valid & PNG_INFO_PLTE)) {
+/* png_set_dither doesn't exist.
+ * no dithering for you.
+ * deal with it.
+ */
+
+#ifdef LOLFUCKYOU
+
+        if(! png_get_valid(png_ptr, info_ptr, PNG_INFO_PLTE)) {
 
 #ifndef DISABLE_TRACE
             if (srcTrace) {
@@ -251,18 +272,22 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
         }
     }
 
+#endif // #ifdef 0
+
+/* idk fuck it */
+#ifdef LOLFUCKYOU
         /* PNG files pack pixels of bit depths 1, 2, and 4 into bytes as
            small as they can. This expands pixels to 1 pixel per byte, and
            if a transparency value is supplied, an alpha channel is
            built.*/
-    if (info_ptr->bit_depth < 8)
+    if (bit_depth < 8)
         png_set_packing(png_ptr);
 
 
         /* have libpng handle the gamma conversion */
 
     if (get_pref_boolean(eUSE_SCREEN_GAMMA)) { /*SWP*/
-        if (info_ptr->bit_depth != 16) {  /* temporary .. glennrp */
+        if (bit_depth != 16) {  /* temporary .. glennrp */
             screen_gamma=(double)(get_pref_float(eSCREEN_GAMMA));
             
 #ifndef DISABLE_TRACE
@@ -288,25 +313,15 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
             }
         }
     }
-    
-    if (info_ptr->interlace_type)
+
+#endif /* LOLFUCKYOU */
+
+    if (png_get_interlace_type(png_ptr, info_ptr))
         png_set_interlace_handling(png_ptr);
 
     png_read_update_info(png_ptr, info_ptr);
-    
-#ifndef DISABLE_TRACE
-    if (srcTrace) {
-        fprintf(stderr,"\n\nAFTER\nheight = %d\n", (int)png_ptr->width);
-        fprintf(stderr,"width = %d\n", (int)png_ptr->height);
-        fprintf(stderr,"bit depth = %d\n", info_ptr->bit_depth);
-        fprintf(stderr,"color type = %d\n", info_ptr->color_type);
-        fprintf(stderr,"compression type = %d\n", info_ptr->compression_type);
-        fprintf(stderr,"filter type = %d\n", info_ptr->filter_type);
-        fprintf(stderr,"interlace type = %d\n", info_ptr->interlace_type);
-        fprintf(stderr,"num colors = %d\n",info_ptr->num_palette);
-        fprintf(stderr,"rowbytes = %d\n", info_ptr->rowbytes);
-    }
-#endif
+
+    __trace("AFTER", png_ptr, info_ptr);
 
         /* allocate the pixel grid which we will need to send to 
            png_read_image(). */

@@ -54,7 +54,7 @@
 
 /* Author: DXP */
 
-#include "libpng12/png.h"
+#include "libpng16/png.h"
 
 unsigned char *
 ReadPNG(FILE *infile,int *width, int *height, XColor *colrs);
