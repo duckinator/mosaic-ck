@@ -235,8 +235,6 @@ unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
  * deal with it.
  */
 
-#ifdef LOLFUCKYOU
-
         if(! png_get_valid(png_ptr, info_ptr, PNG_INFO_PLTE)) {
 
 #ifndef DISABLE_TRACE
@@ -255,10 +253,11 @@ unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 
             /* this should probably be dithering to 
                Rdata.colors_per_inlined_image colors */
+/* ????
             png_set_dither(png_ptr, std_color_cube, 
                            216, 
                            216, NULL, 1);
-            
+*/
         } else {
 #ifndef DISABLE_TRACE
             if (srcTrace) {
@@ -266,15 +265,14 @@ unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
             }
 #endif
 
+/* ????
             png_set_dither(png_ptr, info_ptr->palette, 
                            info_ptr->num_palette,
                            get_pref_int(eCOLORS_PER_INLINED_IMAGE), 
                            info_ptr->hist, 1);
-            
+*/
         }
     }
-
-#endif // #ifdef 0
 
 /* idk fuck it */
 #ifdef LOLFUCKYOU
@@ -325,16 +323,11 @@ unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 
     __trace("AFTER", png_ptr, info_ptr);
 
-        /* allocate the pixel grid which we will need to send to 
-           png_read_image(). */
-/*    png_pixels = (png_byte *)malloc(info_ptr->rowbytes * 
-                                    (*height) * sizeof(png_byte));*/
-
+    /* allocate the pixel grid which we will need to send to 
+       png_read_image(). */
     rowbytes = png_get_rowbytes(png_ptr, info_ptr);
-
     png_pixels = (png_byte *)malloc(rowbytes *
                                     (*height) * sizeof(png_byte));
-    
 
     row_pointers = (png_byte **) malloc((*height) * sizeof(png_byte *));
     for (i=0; i < *height; i++)
@@ -344,41 +337,6 @@ unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
     /* FINALLY - read the darn thing. */
     png_read_image(png_ptr, row_pointers);
 
-
-    /* now that we have the (transformed to 8-bit RGB) image, we have
-       to copy the resulting palette to our colormap. */
-    if (color_type & PNG_COLOR_MASK_COLOR) {
-        if (png_get_valid(png_ptr, info_ptr, PNG_INFO_PLTE)) {
-
-            for (i=0; i < info_ptr->num_palette; i++) {
-                colrs[i].red = info_ptr->palette[i].red << 8;
-                colrs[i].green = info_ptr->palette[i].green << 8;
-                colrs[i].blue = info_ptr->palette[i].blue << 8;
-                colrs[i].pixel = i;
-                colrs[i].flags = DoRed|DoGreen|DoBlue;
-            }
-
-        }
-        else {
-            for (i=0; i < 216; i++) {
-                colrs[i].red = std_color_cube[i].red << 8;
-                colrs[i].green = std_color_cube[i].green << 8;
-                colrs[i].blue = std_color_cube[i].blue << 8;
-                colrs[i].pixel = i;
-                colrs[i].flags = DoRed|DoGreen|DoBlue;
-            }	    
-        }
-    } else {
-        /* grayscale image */
-
-        for(i=0; i < 256; i++ ) {
-            colrs[i].red = i << 8;
-            colrs[i].green = i << 8; 	    
-            colrs[i].blue = i << 8;
-            colrs[i].pixel = i;
-            colrs[i].flags = DoRed|DoGreen|DoBlue;    
-        }
-    }
 
     /* Now copy the pixel data from png_pixels to pixmap */
 
