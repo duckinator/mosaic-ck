@@ -274,8 +274,6 @@ unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
         }
     }
 
-/* idk fuck it */
-#ifdef LOLFUCKYOU
     /* PNG files pack pixels of bit depths 1, 2, and 4 into bytes as
        small as they can. This expands pixels to 1 pixel per byte, and
        if a transparency value is supplied, an alpha channel is
@@ -283,6 +281,8 @@ unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
     if (bit_depth < 8)
         png_set_packing(png_ptr);
 
+/* idk fuck it */
+#ifdef LOLFUCKYOU
 
     /* have libpng handle the gamma conversion */
 
