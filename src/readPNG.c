@@ -107,8 +107,7 @@ void __trace(char *string, png_struct *png_ptr, png_info *info_ptr)
 
 
 
-unsigned char *
-ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
+unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 {
 
     unsigned char *pixmap;
@@ -120,7 +119,8 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 
     double screen_gamma;
 
-    png_byte *png_pixels=NULL, **row_pointers=NULL;
+    png_byte *png_pixels = NULL,
+             **row_pointers = NULL;
     int i, j;
 
     unsigned int packets;
@@ -132,29 +132,29 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 
     png_color std_color_cube[216];
 
-    
-        /* first check to see if its a valid PNG file. If not, return. */
-        /* we assume that infile is a valid filepointer */
+
+    /* first check to see if its a valid PNG file. If not, return. */
+    /* we assume that infile is a valid filepointer */
     {
         int ret;
         png_byte buf[8];
-        
+
         ret = fread(buf, 1, 8, infile);
-        
+
         if(ret != 8)
             return 0;
-        
+
         ret = png_check_sig(buf, 8);
-        
+
         if(!ret)
             return(0);
     }
 
-        /* OK, it is a valid PNG file, so let's rewind it, and start 
-           decoding it */
+    /* OK, it is a valid PNG file, so let's rewind it, and start 
+       decoding it */
     rewind(infile);
 
-        /* allocate the structures */
+    /* allocate the structures */
     png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if(!png_ptr)
         return 0;
@@ -165,7 +165,7 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
         return 0;
     }
 
-        /* Establish the setjmp return context for png_error to use. */
+    /* Establish the setjmp return context for png_error to use. */
     if (setjmp(png_jmpbuf(png_ptr))) {
 #ifndef DISABLE_TRACE
         if (srcTrace) {
@@ -185,13 +185,13 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
         return 0;
     }
 
-        /* set up the input control */
+    /* set up the input control */
     png_init_io(png_ptr, infile);
 
-        /* read the file information */
+    /* read the file information */
     png_read_info(png_ptr, info_ptr);
 
-        /* setup other stuff using the fields of png_info. */
+    /* setup other stuff using the fields of png_info. */
 
     *width = (int)png_get_image_width(png_ptr, info_ptr);
     *height = (int)png_get_image_height(png_ptr, info_ptr);
@@ -244,17 +244,17 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
                 fprintf(stderr,"dithering (RGB->palette)...\n");
             }
 #endif
-                /* if there is is no valid palette, then we need to make
-                   one up */
+            /* if there is is no valid palette, then we need to make
+               one up */
             for(i=0;i<216;i++) {
-                    /* 255.0/5 = 51 */
+                /* 255.0/5 = 51 */
                 std_color_cube[i].red=(i%6)*51;
                 std_color_cube[i].green=((i/6)%6)*51;
                 std_color_cube[i].blue=(i/36)*51;
             }
 
-                /* this should probably be dithering to 
-                   Rdata.colors_per_inlined_image colors */
+            /* this should probably be dithering to 
+               Rdata.colors_per_inlined_image colors */
             png_set_dither(png_ptr, std_color_cube, 
                            216, 
                            216, NULL, 1);
@@ -265,7 +265,7 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
                 fprintf(stderr,"dithering (RGB->file supplied palette)...\n");
             }
 #endif
- 
+
             png_set_dither(png_ptr, info_ptr->palette, 
                            info_ptr->num_palette,
                            get_pref_int(eCOLORS_PER_INLINED_IMAGE), 
@@ -278,15 +278,15 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 
 /* idk fuck it */
 #ifdef LOLFUCKYOU
-        /* PNG files pack pixels of bit depths 1, 2, and 4 into bytes as
-           small as they can. This expands pixels to 1 pixel per byte, and
-           if a transparency value is supplied, an alpha channel is
-           built.*/
+    /* PNG files pack pixels of bit depths 1, 2, and 4 into bytes as
+       small as they can. This expands pixels to 1 pixel per byte, and
+       if a transparency value is supplied, an alpha channel is
+       built.*/
     if (bit_depth < 8)
         png_set_packing(png_ptr);
 
 
-        /* have libpng handle the gamma conversion */
+    /* have libpng handle the gamma conversion */
 
     if (get_pref_boolean(eUSE_SCREEN_GAMMA)) { /*SWP*/
         if (bit_depth != 16) {  /* temporary .. glennrp */
@@ -340,16 +340,16 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
     for (i=0; i < *height; i++)
         row_pointers[i] = png_pixels + (rowbytes * i);
 
-    
-        /* FINALLY - read the darn thing. */
+
+    /* FINALLY - read the darn thing. */
     png_read_image(png_ptr, row_pointers);
-    
-    
-        /* now that we have the (transformed to 8-bit RGB) image, we have
-           to copy the resulting palette to our colormap. */
+
+
+    /* now that we have the (transformed to 8-bit RGB) image, we have
+       to copy the resulting palette to our colormap. */
     if (color_type & PNG_COLOR_MASK_COLOR) {
         if (png_get_valid(png_ptr, info_ptr, PNG_INFO_PLTE)) {
-            
+
             for (i=0; i < info_ptr->num_palette; i++) {
                 colrs[i].red = info_ptr->palette[i].red << 8;
                 colrs[i].green = info_ptr->palette[i].green << 8;
@@ -357,7 +357,7 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
                 colrs[i].pixel = i;
                 colrs[i].flags = DoRed|DoGreen|DoBlue;
             }
-            
+
         }
         else {
             for (i=0; i < 216; i++) {
@@ -369,8 +369,8 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
             }	    
         }
     } else {
-            /* grayscale image */
-        
+        /* grayscale image */
+
         for(i=0; i < 256; i++ ) {
             colrs[i].red = i << 8;
             colrs[i].green = i << 8; 	    
@@ -379,15 +379,15 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
             colrs[i].flags = DoRed|DoGreen|DoBlue;    
         }
     }
-    
-        /* Now copy the pixel data from png_pixels to pixmap */
+
+    /* Now copy the pixel data from png_pixels to pixmap */
 
     pixmap = (png_byte *)malloc((*width) * (*height) * sizeof(png_byte));
 
     p = pixmap; q = png_pixels;
 
-        /* if there is an alpha channel, we have to get rid of it in the
-           pixmap, since I don't do anything with it yet */
+    /* if there is an alpha channel, we have to get rid of it in the
+       pixmap, since I don't do anything with it yet */
     unsigned int has_alpha = color_type & PNG_COLOR_MASK_ALPHA;
 
 #ifndef DISABLE_TRACE
