@@ -299,7 +299,7 @@ unsigned char *ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
                     printf("setting gamma=%f\n", *file_gamma);
                 }
 #endif
-                png_set_gamma(png_ptr, screen_gamma, (double)screen_gamma);
+                png_set_gamma(png_ptr, screen_gamma, (double)*file_gamma);
             }
             else {
 #ifndef DISABLE_TRACE
