@@ -128,6 +128,8 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
     unsigned int color_type;
     unsigned int bit_depth;
 
+    unsigned int rowbytes;
+
     png_color std_color_cube[216];
 
     
@@ -325,13 +327,18 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
 
         /* allocate the pixel grid which we will need to send to 
            png_read_image(). */
-    png_pixels = (png_byte *)malloc(info_ptr->rowbytes * 
+/*    png_pixels = (png_byte *)malloc(info_ptr->rowbytes * 
+                                    (*height) * sizeof(png_byte));*/
+
+    rowbytes = png_get_rowbytes(png_ptr, info_ptr);
+
+    png_pixels = (png_byte *)malloc(rowbytes *
                                     (*height) * sizeof(png_byte));
     
 
     row_pointers = (png_byte **) malloc((*height) * sizeof(png_byte *));
     for (i=0; i < *height; i++)
-        row_pointers[i]=png_pixels+(info_ptr->rowbytes*i);
+        row_pointers[i] = png_pixels + (rowbytes * i);
 
     
         /* FINALLY - read the darn thing. */
@@ -340,8 +347,8 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
     
         /* now that we have the (transformed to 8-bit RGB) image, we have
            to copy the resulting palette to our colormap. */
-    if (info_ptr->color_type & PNG_COLOR_MASK_COLOR) {
-        if (info_ptr->valid & PNG_INFO_PLTE) {
+    if (color_type & PNG_COLOR_MASK_COLOR) {
+        if (png_get_valid(png_ptr, info_ptr, PNG_INFO_PLTE)) {
             
             for (i=0; i < info_ptr->num_palette; i++) {
                 colrs[i].red = info_ptr->palette[i].red << 8;
@@ -374,55 +381,43 @@ ReadPNG(FILE *infile,int *width, int *height, XColor *colrs)
     }
     
         /* Now copy the pixel data from png_pixels to pixmap */
- 
+
     pixmap = (png_byte *)malloc((*width) * (*height) * sizeof(png_byte));
-    
+
     p = pixmap; q = png_pixels;
 
         /* if there is an alpha channel, we have to get rid of it in the
            pixmap, since I don't do anything with it yet */
-    if (info_ptr->color_type & PNG_COLOR_MASK_ALPHA) {
+    unsigned int has_alpha = color_type & PNG_COLOR_MASK_ALPHA;
 
 #ifndef DISABLE_TRACE
-        if (srcTrace) {
-            fprintf(stderr,"Getting rid of alpha channel\n");
+    if (srcTrace) {
+        if (has_alpha) {
+            fprintf(stderr, "Has alpha channel.\n");
+        } else {
+            fprintf(stderr, "No alpha channel.\n");
         }
-#endif
-        for(i=0; i<*height; i++) {
-            q = row_pointers[i];
-            for(j=0; j<*width; j++) {
-                *p++ = *q++; /*palette index*/
-                q++; /* skip the alpha pixel */
-            }
-        }
-        
-        free((char *)png_pixels);
     }
-    else {
-        
-#ifndef DISABLE_TRACE
-        if (srcTrace) {
-            fprintf(stderr,"No alpha channel\n");
-        }
 #endif
-        
-        for(i=0; i<*height; i++) {
-            q = row_pointers[i];
-            for(j=0; j<*width; j++) {
-                *p++ = *q++; /*palette index*/
-            }
+
+    for(i=0; i<*height; i++) {
+        q = row_pointers[i];
+        for(j=0; j<*width; j++) {
+            *p++ = *q++; /*palette index*/
+
+            /* disregard alpha pixel if there is one. */
+            if (has_alpha) { q++; }
         }
-        
-        free((char *)png_pixels);
-        
     }
+
+    free((char *)png_pixels);
 
     free((png_byte **)row_pointers);
-    
-        /* clean up after the read, and free any memory allocated */
 
-        /* free the structure */
-        png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+    /* clean up after the read, and free any memory allocated */
+
+    /* free the structure */
+    png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 
     return pixmap;
 }
